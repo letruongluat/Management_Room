@@ -10,7 +10,7 @@ namespace Management_Room
     class Room
     {
         public static List<MRoom> rooms = new List<MRoom>();
-       
+        public static List<Guest> guests = new List<Guest>();
         string PassAdmin = "123";
         string UserName = "admin";
         private readonly string filePath = "C:\\Users\\LUAT\\Downloads\\rooms.txt";
@@ -113,15 +113,14 @@ namespace Management_Room
             {
                 foreach (var room in rooms)
                 {
-                    string guestInfo = room.GuestInFo != null
-                        ? $"{room.GuestInFo.Name}|{room.GuestInFo.Gender}|{room.GuestInFo.Age}"
+                    string guestInfo = room.GuestInfo != null
+                        ? $"{room.GuestInfo.Name}|{room.GuestInfo.Gender}|{room.GuestInfo.Age}"
                         : "||";
 
-                    writer.WriteLine($"{room.RoomNumber}|{room.IsOccupied}|{room.CheckInDate}|{room.CheckOutDate}|{guestInfo}");
+                    writer.WriteLine($"{room.RoomNumber}|{room.IsOccupied}|{room.Price}|{room.CheckInDate}|{room.CheckOutDate}|{guestInfo}");
                 }
             }
         }
-
 
         private List<MRoom> LoadRoomsFromFile()
         {
@@ -134,20 +133,16 @@ namespace Management_Room
             foreach (var line in lines)
             {
                 var parts = line.Split('|');
-                if (parts.Length >= 5)
+                if (parts.Length >= 6)
                 {
                     var room = new MRoom
                     {
                         RoomNumber = int.Parse(parts[0]),
                         IsOccupied = bool.Parse(parts[1]),
-                        CheckInDate = DateTime.TryParse(parts[2], out DateTime checkin) ? checkin : DateTime.MinValue,
-                        CheckOutDate = DateTime.TryParse(parts[3], out DateTime checkout) ? checkout : DateTime.MinValue,
-                        GuestInFo = string.IsNullOrWhiteSpace(parts[4]) ? null : new Guest
-                        {
-                            Name = parts[4],
-                            Gender = parts[5],
-                            Age = int.Parse(parts[6])
-                        }
+                        Price = double.Parse(parts[2]),
+                        CheckInDate = DateTime.TryParse(parts[3], out DateTime checkin) ? checkin : DateTime.MinValue,
+                        CheckOutDate = DateTime.TryParse(parts[4], out DateTime checkout) ? checkout : DateTime.MinValue,
+                        GuestInfo = string.IsNullOrWhiteSpace(parts[5]) ? null : new Guest(parts[5], parts[6], int.Parse(parts[7]))
                     };
 
                     loadedRooms.Add(room);
@@ -191,7 +186,7 @@ namespace Management_Room
                     Console.WriteLine("Nhap gia tien moi:");
                     if (double.TryParse(Console.ReadLine(), out double newPrice))
                     {
-                        room.price = newPrice;
+                        room.Price = newPrice;
                         Console.WriteLine("Cap nhat gia phong thanh cong.");
                     }
                     else
@@ -222,69 +217,47 @@ namespace Management_Room
             foreach (var room in rooms)
             {
                 string status = room.IsOccupied ? "Da su dung" : "Trong";
-                Console.WriteLine($"{stt}   | Phong {room.RoomNumber}   | {(room.clean ? "Can don dep" : "San sang")}   | {room.price}     | {status}");
+                Console.WriteLine($"{stt}   | Phong {room.RoomNumber}   | {(room.Clean ? "Can don dep" : "San sang")}   | {room.Price}     | {status}");
                 stt++;
             }
         }
-      
+
         public void AddGuest()
         {
-            Console.WriteLine("\nDanh sach cac phong:");
-            Console.WriteLine("\nSTT | Ten phong | Trang thai | Gia tien | Trong/Da su dung");
-            int stt = 1;
-            foreach (var room in rooms)
-            {
-                string status = room.IsOccupied ? "Da su dung" : "Trong";
-                Console.WriteLine($"{stt}   | Phong {room.RoomNumber}   | {(room.clean ? "Can don dep" : "San sang")}   | {room.price}     | {status}");
-                stt++;
-            }
-
             Console.WriteLine("Nhap so phong muon them khach:");
             if (int.TryParse(Console.ReadLine(), out int roomNumber))
             {
                 var room = rooms.FirstOrDefault(r => r.RoomNumber == roomNumber);
 
-                if (room != null)
+                if (room != null && !room.IsOccupied)
                 {
-                    if (room.IsOccupied)
+                    Console.WriteLine("Nhap ten khach:");
+                    string name = Console.ReadLine();
+
+                    Console.WriteLine("Nhap gioi tinh:");
+                    string gender = Console.ReadLine();
+
+                    Console.WriteLine("Nhap ngay check-in :");
+                    DateTime checkIn = DateTime.Parse(Console.ReadLine());
+
+                    Console.WriteLine("Nhap ngay check-out:");
+                    DateTime checkOut = DateTime.Parse(Console.ReadLine());
+
+                    Console.WriteLine("Nhap tuoi khach:");
+                    if (int.TryParse(Console.ReadLine(), out int age))
                     {
-                        Console.WriteLine("Phong da co nguoi su dung.");
+                        room.AssignGuest(new Guest(name, gender, age), checkIn, checkOut);
+                        SaveRoomsToFile();
+                        Console.WriteLine("Them khach thanh cong va da cap nhat file.");
                     }
                     else
                     {
-                        Console.WriteLine("Nhap ten khach:");
-                        string name = Console.ReadLine();
-
-                        Console.WriteLine("Nhap gioi tinh:");
-                        string gender = Console.ReadLine();
-
-                        Console.WriteLine("Nhap ngay check in :");
-                        DateTime checkIn = DateTime.Parse(Console.ReadLine());
-
-                        Console.WriteLine("Nhap ngay check out :");
-                        DateTime checkout = DateTime.Parse(Console.ReadLine());
-
-                        Console.WriteLine("Nhap tuoi khach:");
-                        if (int.TryParse(Console.ReadLine(), out int age))
-                        {
-                            room.CheckInDate = checkIn;
-                            room.CheckOutDate = checkout;
-                            room.GuestInFo = new Guest { Name = name, Gender = gender, Age = age };
-                            room.IsOccupied = true;
-
-                            SaveRoomsToFile();
-                            
-                            Console.WriteLine("Them khach thanh cong va da cap nhat file.");
-                        }
-                        else
-                        {
-                            Console.WriteLine("Tuoi khong hop le.");
-                        }
+                        Console.WriteLine("Tuoi khong hop le.");
                     }
                 }
                 else
                 {
-                    Console.WriteLine("Phong khong ton tai.");
+                    Console.WriteLine("Phong khong ton tai hoac da co nguoi su dung.");
                 }
             }
             else
@@ -292,6 +265,7 @@ namespace Management_Room
                 Console.WriteLine("So phong khong hop le.");
             }
         }
+
         public void RemoveGuest()
         {
             Console.WriteLine("Nhap so phong muon xoa khach:");
@@ -301,7 +275,7 @@ namespace Management_Room
                 if (room != null && room.IsOccupied)
                 {
                     
-                    room.GuestInFo = null;
+                    room.GuestInfo = null;
                     room.IsOccupied = false;
                     Console.WriteLine("Xoa khach thanh cong. Phong hien tai trong.");
                 }
@@ -323,21 +297,24 @@ namespace Management_Room
                 var room = rooms.FirstOrDefault(r => r.RoomNumber == roomNumber);
                 if (room != null && room.IsOccupied)
                 {
-                    Console.WriteLine("Nhap ten moi cua khach:");
-                    room.GuestInFo.Name = Console.ReadLine();
-                    Console.WriteLine("Nhap gioi tinh moi:");
-                    Console.WriteLine("Nhap ngay check in:");
+                    Console.WriteLine("Nhap ten khach:");
+                    string name = Console.ReadLine();
+
+                    Console.WriteLine("Nhap gioi tinh:");
+                    string gender = Console.ReadLine();
+
+                    Console.WriteLine("Nhap ngay check-in :");
                     DateTime checkIn = DateTime.Parse(Console.ReadLine());
-                    Console.WriteLine("Nhap ngay check outn:");
-                    DateTime checkout = DateTime.Parse(Console.ReadLine());
-                    room.GuestInFo.Gender = Console.ReadLine();
-                    Console.WriteLine("Nhap tuoi moi:");
-                    if (int.TryParse(Console.ReadLine(), out int newAge))
+
+                    Console.WriteLine("Nhap ngay check-out:");
+                    DateTime checkOut = DateTime.Parse(Console.ReadLine());
+
+                    Console.WriteLine("Nhap tuoi khach:");
+                    if (int.TryParse(Console.ReadLine(), out int age))
                     {
-                        room.CheckInDate = checkIn;
-                        room.CheckOutDate = checkout;
-                        room.GuestInFo.Age = newAge;
-                        Console.WriteLine("Cap nhat thong tin khach thanh cong.");
+                        room.AssignGuest(new Guest(name, gender, age), checkIn, checkOut);
+                        SaveRoomsToFile();
+                        Console.WriteLine("Cap Nhat thanh cong va da cap nhat file.");
                     }
                     else
                     {
@@ -423,7 +400,7 @@ namespace Management_Room
             var full = rooms.Where(r => r.IsOccupied);
             foreach (var room in full)
             {
-                room.Check();
+                room.DisplayRoomInfo();
             }
         }
 
@@ -435,10 +412,10 @@ namespace Management_Room
                 var room = rooms.FirstOrDefault(r => r.RoomNumber == roomNumber);
                 if (rooms != null)
                 {
-                    room.Check();
+                    room.DisplayRoomInfo();
                     if (room.IsOccupied)
                     {
-                        Console.WriteLine($"Khach: {room.GuestInFo.Name}, Nhan phong: {room.CheckInDate}");
+                        Console.WriteLine($"Khach: {room.GuestInfo.Name}, Nhan phong: {room.CheckInDate}");
                     }
                 }
                 else
@@ -455,18 +432,23 @@ namespace Management_Room
         public void PrintGuest()
         {
             Console.WriteLine("Danh sach tat ca cac khach hang.");
-            var info = rooms.Where(r => r.IsOccupied && r.GuestInFo != null);
+            var info = rooms.Where(r => r.IsOccupied && r.GuestInfo != null);
+
             foreach (var ds in info)
             {
-                Console.WriteLine($"Khach: {ds.GuestInFo.Name}, Gioi tinh: {ds.GuestInFo.Gender}, Do tuoi: {ds.GuestInFo.Age}");
+                Console.WriteLine($"Khach: {ds.GuestInfo.Name}, Gioi tinh: {ds.GuestInfo.Gender}, Do tuoi: {ds.GuestInfo.Age}");
                 Console.WriteLine($"Ngay Nhan Phong: {ds.CheckInDate}");
                 Console.WriteLine($"Ngay Tra phong: {ds.CheckOutDate}");
-                Console.WriteLine($"Thoi Gian luu tru la: {(ds.CheckOutDate.Value - ds.CheckInDate).TotalDays} ngay");
-                double cost = (ds.CheckOutDate.Value - ds.CheckInDate).TotalHours;
-                Console.WriteLine($"Tong Tien La: {cost * ds.price} Đ");
 
+                TimeSpan duration = (ds.CheckOutDate.Value - ds.CheckInDate.Value);
+                double totalDays = duration.TotalDays;  
+                Console.WriteLine($"Thoi Gian luu tru la: {totalDays} ngay");
+
+                double cost = totalDays * ds.Price;
+                Console.WriteLine($"Tong Tien La: {cost} Đ");
             }
         }
+
         public void updatePrice()
         {
             Console.WriteLine("Nhap so phong can sua gia.");
@@ -478,7 +460,7 @@ namespace Management_Room
                     Console.WriteLine("Nhap gia moi.");
                     if (int.TryParse(Console.ReadLine(), out int priceRoom))
                     {
-                        room.price = priceRoom;
+                        room.Price = priceRoom;
                         Console.WriteLine("cap nhat gia thanh cong.");
                     }
                     else
@@ -500,24 +482,29 @@ namespace Management_Room
                 var room = rooms.FirstOrDefault(r => r.RoomNumber == roomNumber);
                 if (room != null && room.IsOccupied && room.CheckOutDate.HasValue)
                 {
-                    double cost = (room.CheckOutDate.Value - room.CheckInDate).TotalHours;
-                    string Time = $"phong: {room.RoomNumber} \nNgay Nhan phong: {room.CheckInDate} \nNgay tra phong: {room.CheckOutDate}";
-                    string bill = $"\n\nHoa don cho phong: {room.RoomNumber} \nKhach: {room.GuestInFo.Name} \nThoi gian luu tru: {(room.CheckOutDate.Value - room.CheckInDate).TotalDays} Ngay \nTong tien la: {cost * room.price} Đ";
+                    TimeSpan duration = (room.CheckOutDate.Value - room.CheckInDate.Value);
+                    double totalDays = duration.TotalDays;
+
+                    string time = $"Phong: {room.RoomNumber} \nNgay Nhan phong: {room.CheckInDate} \nNgay tra phong: {room.CheckOutDate}";
+                    string bill = $"\n\nHoa don cho phong: {room.RoomNumber} \nKhach: {room.GuestInfo.Name} \nThoi gian luu tru: {totalDays} Ngay \nTong tien la: {totalDays * room.Price} Đ";
+
                     File.WriteAllText($"C:\\Users\\LUAT\\Downloads\\bill_room{room.RoomNumber}.txt", bill);
                     SaveBill(bill);
-                    SaveTime(Time);
+                    SaveTime(time);
+
                     Console.WriteLine("Hoa don da duoc xuat.");
                 }
                 else
                 {
-                    Console.WriteLine("xuat hoa don that bai.");
+                    Console.WriteLine("Xuat hoa don that bai.");
                 }
             }
             else
             {
-                Console.WriteLine("nhap so phong khong hop le.");
+                Console.WriteLine("Nhap so phong khong hop le.");
             }
         }
+
         private void Savestatus(int roomnumber, string status)
         {
             string savestatus = $"\n{DateTime.Now}: phong {roomnumber} - {status}\n";
@@ -536,7 +523,7 @@ namespace Management_Room
             Console.WriteLine("Nhap ten hoac so phong can tim.");
         
             string sear = Console.ReadLine();
-            var room = rooms.Where(r => r.IsOccupied && (r.GuestInFo.Name.Contains(sear) || r.RoomNumber.ToString() == sear)).Select(r => $"Phong: {r.RoomNumber}, Khach: {r.GuestInFo.Name}").ToList();
+            var room = rooms.Where(r => r.IsOccupied && (r.GuestInfo.Name.Contains(sear) || r.RoomNumber.ToString() == sear)).Select(r => $"Phong: {r.RoomNumber}, Khach: {r.GuestInfo.Name}").ToList();
            
                 if (room.Any())
                 {
@@ -597,7 +584,7 @@ namespace Management_Room
             foreach (var room in rooms)
             {
                 string status = room.IsOccupied ? "Da su dung" : "Trong";
-                Console.WriteLine($"{stt}   | Phong {room.RoomNumber}   | {(room.clean ? "Can don dep" : "San sang")}   | {room.price}     | {status}");
+                Console.WriteLine($"{stt}   | Phong {room.RoomNumber}   | {(room.Clean ? "Can don dep" : "San sang")}   | {room.Price}     | {status}");
                 stt++;
             }
             Console.WriteLine("chon phong can dat.");
@@ -638,7 +625,7 @@ namespace Management_Room
                 var room = rooms.FirstOrDefault(r => r.RoomNumber == roomNumber);
                 if (room != null)
                 {
-                    room.clean = true;
+                    room.Clean = true;
                     Console.WriteLine($"Phong : {room.RoomNumber} da duoc danh dau can don dep.");
                 }
                 else
